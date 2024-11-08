@@ -1,0 +1,68 @@
+#Libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+#Data Source Files
+q1_sales = pd.read_excel('/content/Integrated Project Data/ProjectQ1Sales.xlsx')
+q2_sales = pd.read_excel('/content/Integrated Project Data/ProjectQ2Sales.xlsx')
+q3_sales = pd.read_excel('/content/Integrated Project Data/ProjectQ3Sales.xlsx')
+q4_sales = pd.read_excel('/content/Integrated Project Data/ProjectQ4Sales.xlsx')
+project_products = pd.read_csv('/content/Integrated Project Data/Project_products.csv')
+project_costs = pd.read_csv('/content/Integrated Project Data/Project_standard_costs.csv')
+
+#Merge quarterly sales data into one dataframe
+df_sales = pd.concat([q1_sales, q2_sales, q3_sales, q4_sales])
+
+#Clean data to be sorted chronologically
+df_sales['Date'] = pd.to_datetime(df_sales['Date'])
+df_sales = df_sales.sort_values(by='Date')
+
+#Link Product_ID between Project Sales and Project Costs files
+df = df_sales.merge(project_products, on='Product_ID')
+df = df.merge(project_costs, on='Product_ID')
+
+#Metrics Calculations
+df['GrossProfit'] = df['Sales_Amount'] - (df['Unit_Cost'] * df['Quantity_Sold'])
+df['ProfitPerUnit'] = df['GrossProfit'] / df['Quantity_Sold']
+df['MarginPerUnit'] = (df['ProfitPerUnit'] / df['Unit_Price']) * 100
+
+#1. Most profitable sales channels
+channel_profit = df.groupby('Sales_Channel')['GrossProfit'].sum().reset_index()
+print("Most Profitable Sales Channels:")
+print(channel_profit)
+
+sns.barplot(data=channel_profit, x='Sales_Channel', y='GrossProfit')
+plt.title('Total Gross Profit by Sales Channel')
+plt.show()
+
+# 2. Most profitable product categories
+category_profit = df.groupby('Category')['GrossProfit'].sum().reset_index()
+print("Most Profitable Product Categories:")
+print(category_profit)
+
+sns.barplot(data=category_profit, x='Category', y='GrossProfit')
+plt.title('Total Gross Profit by Product Category')
+plt.show()
+
+#3. Are there differences in product category profitability across channels?
+category_channel_profit = df.groupby(['Category', 'Sales_Channel'])['GrossProfit'].sum().unstack().reset_index()
+print("Product Category Profitability Across Channels:")
+print(category_channel_profit)
+
+category_channel_profit.plot(kind='bar', stacked=True)
+plt.title('Product Category Profitability Across Channels')
+plt.show()
+
+#4. Most/least profitable products in each category?
+product_profit = df.groupby(['Category', 'Product_ID'])['GrossProfit'].sum().reset_index()
+most_profitable_products = product_profit.sort_values(by='GrossProfit', ascending=False).groupby('Category').head(1)
+least_profitable_products = product_profit.sort_values(by='GrossProfit').groupby('Category').head(1)
+
+#Results output
+print("Most Profitable Products in Each Category:")
+print(most_profitable_products)
+
+print("\nLeast Profitable Products in Each Category:")
+print(least_profitable_products)
